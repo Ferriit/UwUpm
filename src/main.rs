@@ -16,7 +16,7 @@ const PACKAGE_LIST_PATH: &str = "/etc/uwupm/packagelist.txt";
  * E(SH005)     = Invalid command usage
  * E(FS006)     = Unable to create necessary files in setup
  * E(IP007)     = No available servers
- * W(FS008)
+ * W(FS008)     = A necessary folder doesn't exist
  * */
 
 

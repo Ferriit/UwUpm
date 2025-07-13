@@ -17,3 +17,6 @@ Currently UwUPM just supports updating and adding and removing server IPs. But t
 - Install packages                          `uwupm install [package]`   *Note:* It scans *all* listed servers. So sometimes it might find multiple and you get to choose which one to download from
 - Remove packages                           `uwupm remove [package]`
 - Upgrade packages                          `uwupm upgrade`
+
+## Errors:
+[Guide to error codes](ERRORS.md)
