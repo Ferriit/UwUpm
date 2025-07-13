@@ -21,9 +21,6 @@ $(CLIB): $(COBJ)
 rust:
 	cargo build --release
 
-# Link final executable (if needed)
-$(TARGET): rust $(CLIB)
-	# This step depends on your setup. If Rust links everything, maybe you don't need to do anything here.
 
 clean:
 	rm -f $(COBJ) $(CLIB)
