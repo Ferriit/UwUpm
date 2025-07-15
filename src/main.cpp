@@ -8,6 +8,6 @@ int Cpp_Command(const char* cmd) {
         return WEXITSTATUS(ret);
     }
     else {
-        return 1;
+        return 1; // *wraps your return in an else clause for absolutely no fucking reason*
     }
 }
