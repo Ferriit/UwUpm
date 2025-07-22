@@ -35,8 +35,12 @@ fn command(cmd: &str) -> i32{
 
 fn log(error_code: &str, logging_type: &str, message: &str) {
     if logging_type != "I".to_string() {
-        // Logging for info
+        // Logging for warnings and errors
         println!("{}({}): {} :3", logging_type, error_code, message);
+    }
+    else {
+        // Whoops, almost forgot about that one
+        println!("I: {} :3", message);
     }
 }
 
