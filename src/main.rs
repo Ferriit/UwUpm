@@ -33,6 +33,14 @@ fn command(cmd: &str) -> i32{
 }
 
 
+fn log(error_code: &str, logging_type: &str, message: &str) {
+    if logging_type != "I".to_string() {
+        // Logging for info
+        println!("{}({}): {} :3", logging_type, error_code, message);
+    }
+}
+
+
 fn add_server(ip: String, force_flag: bool) -> Result<()> {
     let mut ip_list: String = fs::read_to_string(IPLISTPATH)?;
 
@@ -47,16 +55,16 @@ fn add_server(ip: String, force_flag: bool) -> Result<()> {
     if !found && (force_flag || ping_status == 0) && (ip.contains("http://") || ip.contains("https://")) {
         ip_list += &format!("\n{}", ip);
         fs::write(IPLISTPATH, ip_list)?;
-        println!("I: Wrote IP to IP list");
+        log("", "I", "Wrote IP to IP list");
     }
     else if !ip_list.contains(&ip) {
-        println!("W(IP002): IP already in IP list - Not adding");
+        log("IP002", "W", "IP already in IP list - Not adding");
     }
     else if !(ip.contains("http://") || ip.contains("https://")) {
-        println!("E(IP004): Unable to add IP due to it missing http:// or https:// at the beginning")
+        log("IP004", "E", "Unable to add IP due to it missing http:// or https:// at the beginning");
     }
     else {
-        println!("E(IP001): Unable to reach server. Refusing to add IP");
+        log("IP001", "E", "Unable to reach server. Refusing to add IP");
     }
 
     Ok(())
@@ -69,10 +77,10 @@ fn remove_server(ip: String) -> Result<()> {
     if ip_list.contains(&ip) {
         ip_list = String::from(ip_list.replace(&ip, ""));
         fs::write(IPLISTPATH, ip_list)?;
-        println!("I: Removed IP from IP list");
+        log("", "I", "Removed IP from IP list");
     }
     else {
-        println!("E(IP003): IP not yet in list - Can't remove");
+        log("IP003", "E", "IP not yet in list - Can't remove");
     }
     
     Ok(())
@@ -81,32 +89,32 @@ fn remove_server(ip: String) -> Result<()> {
 
 fn update() -> Result<()>{
     // curl -o /path/to/directory/desired_filename.ext http://example.com/path/to/file
-    println!("I: Reading IP list...");
+    log("", "I", "Reading IP list...");
     let ip_list_string: String = fs::read_to_string(IPLISTPATH)?;
 
     // Split the list into a vector and filter it for empty indices
     let ip_list: Vec<&str> = ip_list_string.split("\n").filter(|s| !s.trim().is_empty()).collect();
 
-    println!("I: Checking for valid IPs");
+    log("", "I", "Checking for valid IPs");
     if ip_list.is_empty() {
-        println!("E(IP007): No servers in iplist - cannot update. Make sure to run \"uwupm addip [http://, http://][SERVER_IP]:[PORT]\" before doing anything else");
+        log("IP007", "E", "No servers in IP list - cannot update. Make sure to run \"uwupm addip [http://, https://][SERVER_IP]:[PORT]\" before doing anything else ");
         return Ok(());
     }
 
-    println!("I: Opening local packagelist...");
+    log("", "I", "Opening local packagelist...");
 
     if !Path::new(&format!("/home/{}/uwupm_packages/", whoami::username())).exists() {
-        println!("W(FS008): Necessary folder for packages doesn't exist. Creating... (Create the folder ~/uwupm_packages if this fails)");
+        log("FS008", "W", "Necessary folder for packages doesn't exist. Creating... (Create the folder /home/root/uwupm_packages if this fails)");
         fs::create_dir_all(&format!("/home/{}/uwupm_packages/", whoami::username()))?;
     }
 
     if !Path::new(&format!("/home/{}/uwupm_packages/packagelist.txt", whoami::username())).exists() {
-        println!("W(FS008): Necessary packagelist file doesn't exist. Creating...");
+        log("FS008", "W", "Necessary packagelist file doesn't exist. Creating...");
         fs::File::create(format!("/home/{}/uwupm_packages/packagelist.txt", whoami::username()))?;
     }
 
     if !Path::new(&format!("/home/{}/uwupm_packages/packagelist_partial.txt", whoami::username())).exists() {
-        println!("W(FS008): Necessary packagelist_partial file doesn't exist. Creating...");
+        log("FS008", "W", "Necessary packagelist_partial file doesn't exist. Creating...");
         fs::File::create(format!("/home/{}/uwupm_packages/packagelist_partial.txt", whoami::username()))?;
     }
 
@@ -118,24 +126,24 @@ fn update() -> Result<()>{
         .open(format!("/home/{}/uwupm_packages/packagelist.txt", whoami::username()))?;
 
     for i in ip_list{
-        println!("I: Adding packagelist from {}...", i);
+        log("", "I", &format!("Adding packagelist from {}...", i));
         command(&format!("curl -o /home/{}/uwupm_packages/packagelist_partial.txt {}/packagelist.txt", whoami::username(), i));
-        println!("I: Writing...");
+        log("", "I", "Writing...");
         let contents = fs::read_to_string("/home/root/uwupm_packages/packagelist_partial.txt")?;
         writeln!(package_list_file, "{}", contents)?;
     }
 
-    println!("I: Copying packagelist...");
+    log("", "I", "Copying packagelist...");
     fs::copy("/home/root/uwupm_packages/packagelist.txt", PACKAGE_LIST_PATH)?;
 
-    println!("I: Update done!");
+    log("", "I", "Update done!");
 
     Ok(())
 }
 
 
 fn unknown_command(arg: String) -> Result<()>{
-    println!("Unknown command \"{}\"", arg);
+    log("SH005", "E", &format!("Unknown command \"{}\"", arg));
     Ok(())
 }
 
@@ -151,7 +159,7 @@ fn main() -> Result<()> {
                 } else if args.len() == 4 && args.iter().any(|s| s == "--force" || s == "-f") {
                     add_server(args[2].clone(), true)
                 } else {
-                    println!("E(SH005): Invalid usage. Expected: uwupm addip [IP] [--force]"); 
+                    log("SH005", "E", "Invalid usage. Expected: uwupm addip [IP] [--force]");
                     Ok(())
                 }
             },
@@ -160,7 +168,7 @@ fn main() -> Result<()> {
                     remove_server(args[2].clone())
                 }
                 else {
-                    println!("E(SH005): Invalid usage. Expected: uwupm removeip [IP]");
+                    log("SH005", "E", "Invalid usage. Expected: uwupm removeip [IP]");
                     Ok(())
                 }
             },
