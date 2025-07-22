@@ -36,11 +36,18 @@ fn command(cmd: &str) -> i32{
 fn log(error_code: &str, logging_type: &str, message: &str) {
     if logging_type != "I".to_string() {
         // Logging for warnings and errors
-        println!("{}({}): {} :3", logging_type, error_code, message);
+        // 1 for bold, 31 for red and 38;5;208 for orange
+        let ansi_escape_code = if logging_type == "E" {
+           "\x1b[1;31m" // red for errors
+        } else {
+            "\x1b[1;38;5;208m" // orange for warnings
+        };
+
+        println!("{}{}\x1b[22m({}):\x1b[0m {} :3", ansi_escape_code, logging_type, error_code, message);
     }
     else {
         // Whoops, almost forgot about that one
-        println!("I: {} :3", message);
+        println!("\x1b[1;34mI:\x1b[0m {} :3", message);
     }
 }
 
