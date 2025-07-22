@@ -14,15 +14,15 @@
 - **(FS006)** - Unable to create necessary files in setup
 - **(IP007)** - No available servers to fetch from
 - **(FS008)** - A necessary folder doesn't exist
-=======
-**(IP001)** - Unable to locate server
-**(IP002)** - Unable to add IP to IP list due to it already existing
-**(IP003)** - Unable to remove IP from IP list due to it not existing
-**(IP004)** - Invalid communication protocol (missing http or https in the name)
-**(SH005)** - Invalid command usage
-**(FS006)** - Unable to create necessary files in setup
-**(IP007)** - No available servers to fetch from
-**(FS008)** - A necessary folder doesn't exist
+
+- **(IP001)** - Unable to locate server
+- **(IP002)** - Unable to add IP to IP list due to it already existing
+- **(IP003)** - Unable to remove IP from IP list due to it not existing
+- **(IP004)** - Invalid communication protocol (missing http or https in the name)
+- **(SH005)** - Invalid command usage
+- **(FS006)** - Unable to create necessary files in setup
+- **(IP007)** - No available servers to fetch from
+- **(FS008)** - A necessary folder doesn't exist
 
 
 
