@@ -5,7 +5,7 @@
 ### (FSxxx) = Filesystem error
 
 ## Actual error codes:
-<<<<<<< Updated upstream
+
 - **(IP001)** - Unable to locate server
 - **(IP002)** - Unable to add IP to IP list due to it already existing
 - **(IP003)** - Unable to remove IP from IP list due to it not existing
@@ -23,7 +23,7 @@
 **(FS006)** - Unable to create necessary files in setup
 **(IP007)** - No available servers to fetch from
 **(FS008)** - A necessary folder doesn't exist
->>>>>>> Stashed changes
+
 
 
 ## *Warnings* and *Errors*:
