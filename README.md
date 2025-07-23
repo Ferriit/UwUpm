@@ -3,10 +3,11 @@
 ## This is a Package Manager for KawaiiOS and other Linux distros
 
 ## Building:
-1. Run `make && cargo build` in the root of the repository
-2. Run `chmod +x target/debug/uwupm`
-3. Run `./src/setup.sh`
-4. Move *target/debug/uwupm* to */bin*
+1. Run `make ARCH=[arm/x86/x64]` to choose whether to compile for Arm, x86 (32-bit) or x64 (x86_64, 64-bit)
+1. Run `make` in the root of the repository
+1. Run `chmod +x target/debug/uwupm`
+1. Run `./src/setup.sh`
+1. Move *target/debug/uwupm* to */bin*
 
 ## Usage:
 Currently UwUPM just supports updating and adding and removing server IPs. But this is a small guide of how it's meant to work:
