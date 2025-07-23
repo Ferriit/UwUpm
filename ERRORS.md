@@ -21,18 +21,18 @@ Errors are prefixed by an E while warnings are prefixed with W. Warnings can usu
 
 ## Common error codes and how to fix them:
 1. E(IP004) - Attempt at adding a Server IP to the IP list without http:// or https:// written out. 
-a) Fix: Add http:// or https:// to the beginning of the IP (depending on which one is appropriate)
+- a) Fix: Add http:// or https:// to the beginning of the IP (depending on which one is appropriate)
 
 2. E(IP001) - Unable to reach server when adding it to the IP list
-a) Fix: Add -f or --force to the command
-b) Fix: Wait for the server to turn back on again if it's shut off and verify the IP
+- a) Fix: Add -f or --force to the command
+- b) Fix: Wait for the server to turn back on again if it's shut off and verify the IP
 
 3. W(FS008) - Doesn't have to be resolved
 
 4. E(SH005) - You typed an invalid command
-a) Fix: Verify that you're typing the correct command
+- a) Fix: Verify that you're typing the correct command
 
 5. E(IP007) - There aren't any registered servers *or* no servers in the IP list are responding
-a) Fix: Add an IP to your IP list
-b) Fix: Wait and see if a server turn back on
+- a) Fix: Add an IP to your IP list
+- b) Fix: Wait and see if a server turn back on
 

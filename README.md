@@ -3,6 +3,8 @@
 ## This is a Package Manager for KawaiiOS and other Linux distros
 
 ## Building:
+1. Run `rustup target add x86_64-unknown-linux-musl i686-unknown-linux-musl armv7-unknown-linux-musl` (You only need the ones you're actually compiling for)
+1. Make sure you have the musl toolchains installed: `sudo pacman -S musl musl-dev` on Arch and `sudo apt install musl-tools` on Debian and Ubuntu-based stuff
 1. Run `make ARCH=[arm/x86/x64]` to choose whether to compile for Arm, x86 (32-bit) or x64 (x86_64, 64-bit)
 1. Run `make` in the root of the repository
 1. Run `chmod +x target/debug/uwupm`
