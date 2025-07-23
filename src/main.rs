@@ -5,8 +5,9 @@ use std::fs;
 use std::path::Path;
 
 
-const IPLISTPATH: &str = "/etc/uwupm/iplist.txt";
+const IPLIST_PATH: &str = "/etc/uwupm/iplist.txt";
 const PACKAGE_LIST_PATH: &str = "/etc/uwupm/packagelist.txt";
+const SAVE_PATH: &str = "/etc/uwupm/packages";
 
 /*
  * E(IP001)     = Unable to locate server
@@ -32,6 +33,12 @@ fn command(cmd: &str) -> i32{
     }
 }
 
+fn download(ip: &str, package: &str, save_name: &str) -> i8 {
+    // Download package from server "ip" and save it to [SAVE_PATH]/[save_name]
+    command(&format!("curl -o {}/{} {}/{}", SAVE_PATH, save_name, ip, package));
+    return 0;
+}
+
 
 fn log(error_code: &str, logging_type: &str, message: &str) {
     if logging_type != "I".to_string() {
@@ -53,7 +60,7 @@ fn log(error_code: &str, logging_type: &str, message: &str) {
 
 
 fn add_server(ip: String, force_flag: bool) -> Result<()> {
-    let mut ip_list: String = fs::read_to_string(IPLISTPATH)?;
+    let mut ip_list: String = fs::read_to_string(IPLIST_PATH)?;
 
     let found = ip_list.lines().any(|line| line.trim() == ip.trim());
 
@@ -65,7 +72,7 @@ fn add_server(ip: String, force_flag: bool) -> Result<()> {
     // Checking to make sure the ip isn't already in the list, is available and contains either http:// or https://
     if !found && (force_flag || ping_status == 0) && (ip.contains("http://") || ip.contains("https://")) {
         ip_list += &format!("\n{}", ip);
-        fs::write(IPLISTPATH, ip_list)?;
+        fs::write(IPLIST_PATH, ip_list)?;
         log("", "I", "Wrote IP to IP list");
     }
     else if !ip_list.contains(&ip) {
@@ -83,11 +90,11 @@ fn add_server(ip: String, force_flag: bool) -> Result<()> {
 
 
 fn remove_server(ip: String) -> Result<()> {
-    let mut ip_list: String = fs::read_to_string(IPLISTPATH)?;
+    let mut ip_list: String = fs::read_to_string(IPLIST_PATH)?;
 
     if ip_list.contains(&ip) {
         ip_list = String::from(ip_list.replace(&ip, ""));
-        fs::write(IPLISTPATH, ip_list)?;
+        fs::write(IPLIST_PATH, ip_list)?;
         log("", "I", "Removed IP from IP list");
     }
     else {
@@ -99,9 +106,8 @@ fn remove_server(ip: String) -> Result<()> {
 
 
 fn update() -> Result<()>{
-    // curl -o /path/to/directory/desired_filename.ext http://example.com/path/to/file
     log("", "I", "Reading IP list...");
-    let ip_list_string: String = fs::read_to_string(IPLISTPATH)?;
+    let ip_list_string: String = fs::read_to_string(IPLIST_PATH)?;
 
     // Split the list into a vector and filter it for empty indices
     let ip_list: Vec<&str> = ip_list_string.split("\n").filter(|s| !s.trim().is_empty()).collect();
@@ -114,38 +120,38 @@ fn update() -> Result<()>{
 
     log("", "I", "Opening local packagelist...");
 
-    if !Path::new(&format!("/home/{}/uwupm_packages/", whoami::username())).exists() {
-        log("FS008", "W", "Necessary folder for packages doesn't exist. Creating... (Create the folder /home/root/uwupm_packages if this fails)");
-        fs::create_dir_all(&format!("/home/{}/uwupm_packages/", whoami::username()))?;
+    if !Path::new(SAVE_PATH).exists() {
+        log("FS008", "W", "Necessary folder for packages doesn't exist. Creating...");
+        fs::create_dir_all(SAVE_PATH)?;
     }
 
-    if !Path::new(&format!("/home/{}/uwupm_packages/packagelist.txt", whoami::username())).exists() {
+    if !Path::new(&format!("{}/packagelist.txt", SAVE_PATH)).exists() {
         log("FS008", "W", "Necessary packagelist file doesn't exist. Creating...");
-        fs::File::create(format!("/home/{}/uwupm_packages/packagelist.txt", whoami::username()))?;
+        fs::File::create(format!("{}/packagelist.txt", SAVE_PATH))?;
     }
 
-    if !Path::new(&format!("/home/{}/uwupm_packages/packagelist_partial.txt", whoami::username())).exists() {
+    if !Path::new(&format!("{}/packagelist_partial.txt", SAVE_PATH)).exists() {
         log("FS008", "W", "Necessary packagelist_partial file doesn't exist. Creating...");
-        fs::File::create(format!("/home/{}/uwupm_packages/packagelist_partial.txt", whoami::username()))?;
+        fs::File::create(format!("{}/packagelist_partial.txt", SAVE_PATH))?;
     }
 
-    fs::File::create("/home/root/uwupm_packages/packagelist.txt")?;
+    fs::File::create(&format!("{}/packagelist.txt", SAVE_PATH))?;
 
     let mut package_list_file = fs::OpenOptions::new()
         .append(true)
         .create(true)
-        .open(format!("/home/{}/uwupm_packages/packagelist.txt", whoami::username()))?;
+        .open(format!("{}/packagelist.txt", SAVE_PATH))?;
 
     for i in ip_list{
         log("", "I", &format!("Adding packagelist from {}...", i));
-        command(&format!("curl -o /home/{}/uwupm_packages/packagelist_partial.txt {}/packagelist.txt", whoami::username(), i));
+        download(i, "packagelist.txt", "packagelist_partial.txt");
         log("", "I", "Writing...");
-        let contents = fs::read_to_string("/home/root/uwupm_packages/packagelist_partial.txt")?;
+        let contents = fs::read_to_string(&format!("{}/packagelist_partial.txt", SAVE_PATH))?;
         writeln!(package_list_file, "{}", contents)?;
     }
 
     log("", "I", "Copying packagelist...");
-    fs::copy("/home/root/uwupm_packages/packagelist.txt", PACKAGE_LIST_PATH)?;
+    fs::copy(&format!("{}/packagelist.txt", SAVE_PATH), PACKAGE_LIST_PATH)?;
 
     log("", "I", "Update done!");
 
