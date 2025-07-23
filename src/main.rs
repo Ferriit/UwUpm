@@ -1,8 +1,10 @@
 use std::ffi::CString;
 use std::env;
-use std::io::{Result, Write};
+use std::io::{Result, Write, copy, self};
 use std::fs;
+use std::fs::File;
 use std::path::Path;
+use reqwest::blocking::get;
 
 
 const IPLIST_PATH: &str = "/etc/uwupm/iplist.txt";
@@ -33,11 +35,19 @@ fn command(cmd: &str) -> i32{
     }
 }
 
-fn download(ip: &str, package: &str, save_name: &str) -> i8 {
-    // Download package from server "ip" and save it to [SAVE_PATH]/[save_name]
-    command(&format!("curl -o {}/{} {}/{}", SAVE_PATH, save_name, ip, package));
-    return 0;
+
+fn download(ip: &str, package: &str, save_name: &str) -> io::Result<()> {
+    let url = format!("{}/{}", ip.trim_end_matches('/'), package);
+
+    let response = get(&url).map_err(|e| io::Error::new(io::ErrorKind::Other, e.to_string()))?;
+    let mut reader = io::BufReader::new(response);
+    let mut dest = File::create(&format!("{}/{}", SAVE_PATH, save_name))?;
+
+    copy(&mut reader, &mut dest)?;
+
+    Ok(())
 }
+
 
 
 fn log(error_code: &str, logging_type: &str, message: &str) {
@@ -144,7 +154,7 @@ fn update() -> Result<()>{
 
     for i in ip_list{
         log("", "I", &format!("Adding packagelist from {}...", i));
-        download(i, "packagelist.txt", "packagelist_partial.txt");
+        download(i, "packagelist.txt", "packagelist_partial.txt")?;
         log("", "I", "Writing...");
         let contents = fs::read_to_string(&format!("{}/packagelist_partial.txt", SAVE_PATH))?;
         writeln!(package_list_file, "{}", contents)?;
