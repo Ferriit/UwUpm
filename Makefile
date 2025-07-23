@@ -28,12 +28,12 @@ endif
 # Static Rust binary build path
 RUST_BIN = target/$(RUST_TARGET)/release/uwupm
 
-# Default target
-all: rust $(CLIB)
+# Default target: build static C++ lib first, then Rust
+all: $(CLIB) rust
 	@echo "Build complete. Binary at $(RUST_BIN)"
 
-# Build Rust part statically
-rust:
+# Rust build depends on static lib (to ensure link succeeds)
+rust: $(CLIB)
 	cargo build --release --target $(RUST_TARGET)
 
 # Compile C++ code
