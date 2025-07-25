@@ -1,15 +1,17 @@
 use std::ffi::CString;
 use std::env;
-use std::io::{Result, Write, copy, self};
+use std::io::{Result, Write, Read, BufReader, self};
 use std::fs;
 use std::fs::File;
 use std::path::Path;
 use reqwest::blocking::get;
+use indicatif::{ProgressBar, ProgressStyle};
 
 
 const IPLIST_PATH: &str = "/etc/uwupm/iplist.txt";
 const PACKAGE_LIST_PATH: &str = "/etc/uwupm/packagelist.txt";
 const SAVE_PATH: &str = "/etc/uwupm/packages";
+const PROGRESS_BAR_CHARS: &str = "█>-";
 
 /*
  * E(IP001)     = Unable to locate server
@@ -39,15 +41,40 @@ fn command(cmd: &str) -> i32{
 fn download(ip: &str, package: &str, save_name: &str) -> io::Result<()> {
     let url = format!("{}/{}", ip.trim_end_matches('/'), package);
 
-    let response = get(&url).map_err(|e| io::Error::new(io::ErrorKind::Other, e.to_string()))?;
-    let mut reader = io::BufReader::new(response);
-    let mut dest = File::create(&format!("{}/{}", SAVE_PATH, save_name))?;
+    let response = get(&url)
+        .map_err(|e| io::Error::new(io::ErrorKind::Other, e.to_string()))?;
 
-    copy(&mut reader, &mut dest)?;
+    // Get content length for progress bar (if available)
+    let total_size = response
+        .content_length()
+        .ok_or_else(|| io::Error::new(io::ErrorKind::Other, "Failed to get content length"))?;
 
+    let mut reader = BufReader::new(response);
+    let mut dest = File::create(format!("{}/{}", SAVE_PATH, save_name))?;
+
+    let pb = ProgressBar::new(total_size);
+    pb.set_style(
+        ProgressStyle::with_template("[{elapsed_precise}] [{bar:40.magenta}] {bytes}/{total_bytes} ({eta})")
+            .unwrap()
+            .progress_chars(PROGRESS_BAR_CHARS),
+    );
+
+    let mut buffer = [0u8; 8192];
+    let mut downloaded = 0;
+
+    loop {
+        let n = reader.read(&mut buffer)?;
+        if n == 0 {
+            break; // EOF
+        }
+        dest.write_all(&buffer[..n])?;
+        downloaded += n as u64;
+        pb.set_position(downloaded);
+    }
+
+    pb.finish_with_message("Download complete");
     Ok(())
 }
-
 
 
 fn log(error_code: &str, logging_type: &str, message: &str) {
@@ -169,6 +196,12 @@ fn update() -> Result<()>{
 }
 
 
+fn install(packages: &[String]) -> Result<()> {
+    println!("{:?}", packages);
+    Ok(())
+}
+
+
 fn unknown_command(arg: String) -> Result<()>{
     log("SH005", "E", &format!("Unknown command \"{}\"", arg));
     Ok(())
@@ -200,6 +233,14 @@ fn main() -> Result<()> {
                 }
             },
             "update" => update(),
+            "install" => {
+                if args.len() > 2{
+                    install(&args[2..])
+                } else {
+                    log("SH005", "E", "Invalid usage. Expected: uwupm install [packages/flags]");
+                    Ok(())
+                }
+            },
             _ => unknown_command(args[1].clone())
         }?;
     }
