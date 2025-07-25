@@ -1,8 +1,9 @@
 [package]
 name = "uwupm"
 version = "0.1.0"
-edition = "2024"
+edition = "2025"
 build = "build.rs"
+license = "BSD-3-Clause"
 
 [dependencies]
 cc = "1.0"
