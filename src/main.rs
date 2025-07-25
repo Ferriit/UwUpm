@@ -9,13 +9,14 @@ use indicatif::{ProgressBar, ProgressStyle};
 use std::thread;
 use std::cmp::min;
 use std::sync::{Arc, Mutex};
+use terminal_size::{terminal_size, Width};
+
 
 
 const IPLIST_PATH: &str = "/etc/uwupm/iplist.txt";
 const PACKAGE_LIST_PATH: &str = "/etc/uwupm/packagelist.txt";
 const SAVE_PATH: &str = "/etc/uwupm/packages";
-const PROGRESS_BAR_CHARS: &str = "█>-";
-const PROGRESS_BAR_STYLE: &str = "[{elapsed_precise}] [{bar:60.default}] {bytes}/{total_bytes} ({eta})";
+const PROGRESS_BAR_CHARS: &str = "██-";
 const THREAD_AMOUNT: i8 = 5;
 
 /*
@@ -60,11 +61,20 @@ fn download(ip: &str, package: &str, save_name: &str) -> io::Result<()> {
     let mut dest = File::create(format!("{}/{}", SAVE_PATH, save_name))?;
 
     let pb = ProgressBar::new(total_size);
+    
+    let term_width = terminal_size().map(|(Width(w), _)| w as usize).unwrap_or(80);
+    let bar_width = 40;
+    let info_width = 30; // Estimated width of "bytes/total_bytes (eta)"
+    let prefix_width = term_width.saturating_sub(bar_width + info_width);
+    let padded_package = format!("{:>width$}", package, width = prefix_width - 4); // 4-char spacing
+    let full_style = format!("{}    ", padded_package);
+
     pb.set_style(
-        ProgressStyle::with_template(PROGRESS_BAR_STYLE)
-            .unwrap()
-            .progress_chars(PROGRESS_BAR_CHARS),
+        ProgressStyle::with_template(&format!("{full_style}[{{bar:{bar_width}.magenta}}] {{bytes}}/{{total_bytes}} ({{eta}})"))
+        .unwrap()
+        .progress_chars(PROGRESS_BAR_CHARS),
     );
+
 
     let mut buffer = [0u8; 8192];
     let mut downloaded = 0;
