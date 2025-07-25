@@ -23,11 +23,11 @@ Currently UwUPM just supports updating and adding and removing server IPs. But t
 
 ## Errors:
 
-### (IPxxx) = IP / Network / Server error
-### (SHxxx) = Shell / Bash error
-### (FSxxx) = Filesystem error
+#### (IPxxx) = IP / Network / Server error
+#### (SHxxx) = Shell / Bash error
+#### (FSxxx) = Filesystem error
 
-## Actual error codes:
+### Actual error codes:
 
 - **(IP001)** - Unable to locate server
 - **(IP002)** - Unable to add IP to IP list due to it already existing
@@ -41,10 +41,10 @@ Currently UwUPM just supports updating and adding and removing server IPs. But t
 - **(DW010)** - A Thread was unable to download a certain package
 
 
-## *Warnings* and *Errors*:
+### *Warnings* and *Errors*:
 Errors are prefixed by an E while warnings are prefixed with W. Warnings can usually be resolved by the program itself without crash while Errors cause a crash
 
-## Common error codes and how to fix them:
+### Common error codes and how to fix them:
 1. E(IP004) - Attempt at adding a Server IP to the IP list without http:// or https:// written out. 
 - a) Fix: Add http:// or https:// to the beginning of the IP (depending on which one is appropriate)
 
