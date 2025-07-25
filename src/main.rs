@@ -6,12 +6,17 @@ use std::fs::File;
 use std::path::Path;
 use reqwest::blocking::get;
 use indicatif::{ProgressBar, ProgressStyle};
+use std::thread;
+use std::cmp::min;
+use std::sync::{Arc, Mutex};
 
 
 const IPLIST_PATH: &str = "/etc/uwupm/iplist.txt";
 const PACKAGE_LIST_PATH: &str = "/etc/uwupm/packagelist.txt";
 const SAVE_PATH: &str = "/etc/uwupm/packages";
 const PROGRESS_BAR_CHARS: &str = "█>-";
+const PROGRESS_BAR_STYLE: &str = "[{elapsed_precise}] [{bar:60.default}] {bytes}/{total_bytes} ({eta})";
+const THREAD_AMOUNT: i8 = 5;
 
 /*
  * E(IP001)     = Unable to locate server
@@ -22,6 +27,8 @@ const PROGRESS_BAR_CHARS: &str = "█>-";
  * E(FS006)     = Unable to create necessary files in setup
  * E(IP007)     = No available servers
  * W(FS008)     = A necessary folder doesn't exist
+ * E(IP009)     = Unable to find a package on any server
+ * E(DW010)     = Error downloading a package
  * */
 
 
@@ -54,7 +61,7 @@ fn download(ip: &str, package: &str, save_name: &str) -> io::Result<()> {
 
     let pb = ProgressBar::new(total_size);
     pb.set_style(
-        ProgressStyle::with_template("[{elapsed_precise}] [{bar:40.magenta}] {bytes}/{total_bytes} ({eta})")
+        ProgressStyle::with_template(PROGRESS_BAR_STYLE)
             .unwrap()
             .progress_chars(PROGRESS_BAR_CHARS),
     );
@@ -196,8 +203,109 @@ fn update() -> Result<()>{
 }
 
 
-fn install(packages: &[String]) -> Result<()> {
-    println!("{:?}", packages);
+fn install(arguments: &[String]) -> Result<()> {
+    log("", "I", &format!("Installing package(s) {}", arguments.join(", ")));
+    let mut packages: Vec<&str> = Vec::new();
+    let mut flags: Vec<&str> = Vec::new();
+
+    /* Flags:
+     * -s/--skip = Skip unavailable packages
+     * */
+    // Separate Flags from Packages
+    for i in arguments {
+        if i.starts_with("-") {
+            flags.push(i);
+        } else {
+            packages.push(i);
+        }
+    }
+
+    //TODO: Implement more flags
+    let skip_unavailable = flags.contains(&"-s") || flags.contains(&"--skip");
+
+    log("", "I", "Reading package list...");
+    let package_list_raw = fs::read_to_string(PACKAGE_LIST_PATH)?;
+
+    // Format the raw package list to something actually useful
+    let package_list: Vec<(String, String)> = package_list_raw
+        .lines()    // Split string into lines
+        .filter_map(|line| {
+            let mut parts = line.split_whitespace();
+            let name = parts.next()?;     // Filter the name and URL
+            let url = parts.next()?;
+            Some((name.to_string(), url.to_string()))
+        })
+        .collect();
+
+    // Check if the queued packages actually exist
+    let mut download_queue: Vec<(String, String)> = Vec::new(); // Queue for packages to download if certain packages don't exist
+    let mut downloadable = true;
+    log("", "I", "Checking for package availability");
+    for pkg_name in &packages {
+        if !package_list.iter().any(|(_, name)| name == *pkg_name) {
+            let error_type = if !skip_unavailable { "E" } else { "W" };
+            log("IP009", error_type, &format!("Unable to locate package \"{}\" on any known servers", pkg_name));
+            downloadable = false;
+        }
+        else {
+            let package_idx: usize = package_list.iter()
+            .position(|(_url, name)| name == *pkg_name)
+            .unwrap();
+
+            //let (url, name) = &package_list[package_idx];
+            download_queue.push(package_list[package_idx].clone());
+        }
+    }
+
+    // Exit due to packages being available
+    if !downloadable && !skip_unavailable {
+        return Ok(());
+    }
+    
+    // List of all packages that already have been downloaded
+    let downloaded_packages: Vec<usize> = Vec::new();
+
+    let download_queue = Arc::new(download_queue); // if RO between threads
+    let downloaded_packages = Arc::new(Mutex::new(downloaded_packages)); // R/W between threads
+
+    // Download all packages in download queue in multiple threads
+    let handles: Vec<_> = (0..min(THREAD_AMOUNT as usize, download_queue.len())).map(|thread_idx| {
+        let dq = Arc::clone(&download_queue);
+        let dp = Arc::clone(&downloaded_packages);
+
+        thread::spawn(move || -> Result<()> {
+            //println!("Hello from thread {}", i);
+            
+
+            let mut dp_lock = dp.lock().unwrap();
+
+            for i in thread_idx..dq.len() {
+                if !dp_lock.contains(&i) {
+                    let (url, name) = &dq[i];
+                    dp_lock.push(i);
+                    download(&url, &format!("{}.tar.gz", name), &name)?;
+                }
+            }
+            Ok(())
+        })
+    }).collect();
+   
+    for handle in handles {
+        match handle.join() {
+            Ok(thread_result) => {
+                if let Err(e) = thread_result {
+                    log("DW010", "E", &format!("{:?}", e));
+                    return Ok(());
+                }
+            }
+            Err(e) => {
+                log("DW010", "E", &format!("{:?}", e));
+                return Ok(());
+            }
+        }
+    }
+
+    log("", "I", "Install complete");
     Ok(())
 }
 

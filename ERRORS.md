@@ -14,6 +14,8 @@
 - **(FS006)** - Unable to create necessary files in setup
 - **(IP007)** - No available servers to fetch from
 - **(FS008)** - A necessary folder doesn't exist
+- **(IP009)** - Unable to find a queued package on any servers
+- **(DW010)** - A Thread was unable to download a certain package
 
 
 ## *Warnings* and *Errors*:
@@ -36,3 +38,6 @@ Errors are prefixed by an E while warnings are prefixed with W. Warnings can usu
 - a) Fix: Add an IP to your IP list
 - b) Fix: Wait and see if a server turn back on
 
+6. E(IP009) - A queued package can't be found on any known servers 
+- a) Fix: Try updating
+- b) Fix: Add any servers that are know to have the package
