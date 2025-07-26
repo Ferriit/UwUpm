@@ -1,8 +1,7 @@
 use std::ffi::CString;
 use std::env;
 use std::io::{Result, Write, Read, BufReader, self};
-use std::fs;
-use std::fs::File;
+use std::fs::{File, self};
 use std::path::Path;
 use reqwest::blocking::get;
 use indicatif::{ProgressBar, ProgressStyle};
@@ -10,12 +9,15 @@ use std::thread;
 use std::cmp::min;
 use std::sync::{Arc, Mutex};
 use terminal_size::{terminal_size, Width};
+use flate2::read::GzDecoder;
+use tar::Archive;
 
 
 
 const IPLIST_PATH: &str = "/etc/uwupm/iplist.txt";
 const PACKAGE_LIST_PATH: &str = "/etc/uwupm/packagelist.txt";
-const SAVE_PATH: &str = "/etc/uwupm/packages";
+const SAVE_PATH: &str = "/etc/uwupm/packages_partial";
+const PACKAGE_PATH: &str = "/etc/uwupm/packages";
 const PROGRESS_BAR_CHARS: &str = "##-";//"██-";
 const THREAD_AMOUNT: i8 = 5;
 
@@ -47,6 +49,9 @@ fn command(cmd: &str) -> i32{
 
 
 fn download(ip: &str, package: &str, save_name: &str) -> io::Result<()> {
+    if !Path::new(SAVE_PATH).exists() {
+        fs::create_dir_all(SAVE_PATH)?;
+    }
     let url = format!("{}/{}", ip.trim_end_matches('/'), package);
 
     let response = get(&url)
@@ -279,6 +284,11 @@ fn install(arguments: &[String]) -> Result<()> {
     let downloaded_packages = Arc::new(Mutex::new(downloaded_packages)); // R/W between threads
 
     // Download all packages in download queue in multiple threads
+
+    if !Path::new(PACKAGE_PATH).exists() {
+        fs::create_dir_all(PACKAGE_PATH)?;
+    }
+
     let handles: Vec<_> = (0..min(THREAD_AMOUNT as usize, download_queue.len())).map(|thread_idx| {
         let dq = Arc::clone(&download_queue);
         let dp = Arc::clone(&downloaded_packages);
@@ -293,26 +303,42 @@ fn install(arguments: &[String]) -> Result<()> {
                 if !dp_lock.contains(&i) {
                     let (url, name) = &dq[i];
                     dp_lock.push(i);
-                    download(&url, &format!("{}.tar.gz", name), &name)?;
+                    download(&url, &format!("{}.tar.gz", name), &format!("{}.tar.gz", name))?;
+
+                    let tar_gz = File::open(&format!("{}/{}.tar.gz", SAVE_PATH, name))?;
+                    let decompressed = GzDecoder::new(tar_gz);
+                    let mut archive = Archive::new(decompressed);
+                    archive.unpack(&format!("{}/{}", PACKAGE_PATH, name))?;
                 }
             }
             Ok(())
         })
     }).collect();
-   
+    
+    let mut exit_after_cleanup = false;
+
     for handle in handles {
         match handle.join() {
             Ok(thread_result) => {
                 if let Err(e) = thread_result {
                     log("DW010", "E", &format!("{:?}", e));
-                    return Ok(());
+                    exit_after_cleanup = true;
                 }
             }
             Err(e) => {
                 log("DW010", "E", &format!("{:?}", e));
-                return Ok(());
+                exit_after_cleanup = true;
             }
         }
+    }
+
+    log("", "I", "Cleaning up archives...");
+    fs::remove_dir_all(PACKAGE_PATH)?;
+    fs::create_dir_all(PACKAGE_PATH)?;
+
+    if exit_after_cleanup {
+        log("", "I", "Exiting...");
+        return Ok(());
     }
 
     log("", "I", "Install complete");

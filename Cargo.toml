@@ -11,4 +11,6 @@ libc = "0.2.174"
 reqwest = { version = "0.12", default-features = false, features = ["blocking", "rustls-tls"] }
 indicatif = "0.18"
 terminal_size = "0.3"
+flate2 = "1.0"
+tar = "0.4"
 
