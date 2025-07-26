@@ -16,7 +16,7 @@ use terminal_size::{terminal_size, Width};
 const IPLIST_PATH: &str = "/etc/uwupm/iplist.txt";
 const PACKAGE_LIST_PATH: &str = "/etc/uwupm/packagelist.txt";
 const SAVE_PATH: &str = "/etc/uwupm/packages";
-const PROGRESS_BAR_CHARS: &str = "██-";
+const PROGRESS_BAR_CHARS: &str = "##-";//"██-";
 const THREAD_AMOUNT: i8 = 5;
 
 /*
