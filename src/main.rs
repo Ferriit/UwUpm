@@ -301,14 +301,24 @@ fn install(arguments: &[String]) -> Result<()> {
 
             for i in thread_idx..dq.len() {
                 if !dp_lock.contains(&i) {
+                    // Download the archive
                     let (url, name) = &dq[i];
                     dp_lock.push(i);
                     download(&url, &format!("{}.tar.gz", name), &format!("{}.tar.gz", name))?;
 
+                    // Unpack the archive
                     let tar_gz = File::open(&format!("{}/{}.tar.gz", SAVE_PATH, name))?;
                     let decompressed = GzDecoder::new(tar_gz);
                     let mut archive = Archive::new(decompressed);
                     archive.unpack(&format!("{}/{}", PACKAGE_PATH, name))?;
+
+                    // Run the install script
+                    if Path::new(&format!("{}/{}/run.sh", PACKAGE_PATH, name)).exists() {
+                        command(&format!("sudo bash {}/{}/uwupm-install.sh", PACKAGE_PATH, name));
+                    }
+                    else {
+                        log("FS011", "W", &format!("Package \"{}\" doesn't have an uwupm-install.sh file and cannot be installed. Manual intervention is required. The package is installed at \"{}/{}\"", name, PACKAGE_PATH, name));
+                    }
                 }
             }
             Ok(())
