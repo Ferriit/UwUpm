@@ -356,6 +356,7 @@ fn install(arguments: &[String]) -> Result<()> {
 }
 
 
+
 fn unknown_command(arg: String) -> Result<()>{
     log("SH005", "E", &format!("Unknown command \"{}\"", arg));
     Ok(())
