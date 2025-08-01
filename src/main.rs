@@ -49,7 +49,7 @@ fn command(cmd: &str) -> i32{
 }
 
 
-fn download(ip: &str, package: &str, save_name: &str) -> io::Result<()> {
+fn download(ip: &str, package: &str, save_name: &str, download_name: &str) -> io::Result<()> {
     if !Path::new(SAVE_PATH).exists() {
         fs::create_dir_all(SAVE_PATH)?;
     }
@@ -72,7 +72,7 @@ fn download(ip: &str, package: &str, save_name: &str) -> io::Result<()> {
     let bar_width = 40;
     let info_width = 30; // Estimated width of "bytes/total_bytes (eta)"
     let prefix_width = term_width.saturating_sub(bar_width + info_width);
-    let padded_package = format!("{:>width$}", package, width = prefix_width - 4); // 4-char spacing
+    let padded_package = format!("{:>width$}", download_name, width = prefix_width - 4); // 4-char spacing
     let full_style = format!("{}    ", padded_package);
 
     pb.set_style(
@@ -216,7 +216,7 @@ fn update() -> Result<()>{
 
     for i in ip_list{
         log("", "I", &format!("Adding packagelist from {}...", i));
-        download(i, "packagelist.txt", "packagelist_partial.txt")?;
+        download(i, "packagelist.txt", "packagelist_partial.txt", &format!("{}:packagelist.txt", i))?;
         log("", "I", "Writing...");
         let contents = fs::read_to_string(&format!("{}/packagelist_partial.txt", SAVE_PATH))?;
         writeln!(package_list_file, "{}", contents)?;
@@ -331,7 +331,7 @@ fn install(arguments: &[String]) -> Result<()> {
                     // Download the archive
                     let (url, name) = &dq[i];
                     dp_lock.push(i);
-                    download(&url, &format!("{}.tar.gz", name), &format!("{}.tar.gz", name))?;
+                    download(&url, &format!("{}.tar.gz", name), &format!("{}.tar.gz", name), &format!("{}:{}.tar.gz", url, name))?;
 
                     // Unpack the archive
                     let tar_gz = File::open(&format!("{}/{}.tar.gz", SAVE_PATH, name))?;
@@ -402,6 +402,30 @@ fn unknown_command(arg: String) -> Result<()>{
 }
 
 
+fn show_ip_list() -> Result<()> {
+    let ip_list = fs::read_to_string(IPLIST_PATH)?;
+
+    let filtered = ip_list
+        .lines()
+        .filter(|line| !line.trim().is_empty()) // remove empty lines
+        .collect::<Vec<_>>()
+        .join("\n");
+
+    println!("\x1b[1mIP List:\x1b[0m\n{}", filtered);
+
+    Ok(())
+}
+
+
+fn show_package_list() -> Result<()> {
+    let package_list = fs::read_to_string(PACKAGE_LIST_PATH)?;
+
+    println!("\x1b[1mPackage List:\x1b[0m\n{}", package_list);
+
+    Ok(())
+}
+
+
 fn main() -> Result<()> {
     let args: Vec<String> = env::args().collect();
     
@@ -427,6 +451,25 @@ fn main() -> Result<()> {
                 }
             },
             "update" => update(),
+            "show" => {
+                if args.len() == 3 {
+                    if args[2] == "iplist" {
+                        show_ip_list()?;
+                    }
+
+                    else if args[2] == "packagelist" {
+                        show_package_list()?;
+                    }
+
+                    else {
+                        log("SH005", "E", &format!("Unknown argument \"{}\". Only known arguments are iplist and packagelist", args[2]));
+                    }
+                }
+                else {
+                    log("SH005", "E", "Invalid usage. Expected: uwupm show [iplist/packagelist]");
+                }
+                Ok(())
+            }
             "install" => {
                 if args.len() > 2{
                     install(&args[2..])
