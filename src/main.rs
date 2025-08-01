@@ -18,6 +18,7 @@ const IPLIST_PATH: &str = "/etc/uwupm/iplist.txt";
 const PACKAGE_LIST_PATH: &str = "/etc/uwupm/packagelist.txt";
 const SAVE_PATH: &str = "/etc/uwupm/packages_partial";
 const PACKAGE_PATH: &str = "/etc/uwupm/packages";
+const UNINSTALL_SCRIPTS_PATH: &str = "/etc/uwupm/uninstall_scripts";
 const PROGRESS_BAR_CHARS: &str = "##-";//"██-";
 const THREAD_AMOUNT: i8 = 5;
 
@@ -99,8 +100,8 @@ fn download(ip: &str, package: &str, save_name: &str) -> io::Result<()> {
 }
 
 
-fn log(error_code: &str, logging_type: &str, message: &str) {
-    if logging_type != "I".to_string() {
+fn log(error_code: &str, logging_type: &str, message: &str) -> Option<String> {
+    if logging_type == "W" || logging_type == "E" {
         // Logging for warnings and errors
         // 1 for bold, 31 for red and 38;5;208 for orange
         let ansi_escape_code = if logging_type == "E" {
@@ -110,10 +111,22 @@ fn log(error_code: &str, logging_type: &str, message: &str) {
         };
 
         println!("{}{}\x1b[22m({}):\x1b[0m {} :3", ansi_escape_code, logging_type, error_code, message);
+        return None;
+    }
+    else if logging_type == "?" {
+        // Inputs
+        print!("\x1b[1;35m?:\x1b[0m {} :3 (y/n): ", message);
+        io::stdout().flush().unwrap();
+        
+        let mut input = String::new();
+        io::stdin().read_line(&mut input).unwrap();
+    
+        Some(input.trim().to_string())
     }
     else {
         // Whoops, almost forgot about that one
         println!("\x1b[1;34mI:\x1b[0m {} :3", message);
+        return None;
     }
 }
 
@@ -237,6 +250,7 @@ fn install(arguments: &[String]) -> Result<()> {
 
     //TODO: Implement more flags
     let skip_unavailable = flags.contains(&"-s") || flags.contains(&"--skip");
+    let no_confirm: bool = flags.contains(&"-y") || flags.contains(&"--no-confirm");
 
     log("", "I", "Reading package list...");
     let package_list_raw = fs::read_to_string(PACKAGE_LIST_PATH)?;
@@ -289,6 +303,19 @@ fn install(arguments: &[String]) -> Result<()> {
         fs::create_dir_all(PACKAGE_PATH)?;
     }
 
+    if !no_confirm {
+        let continue_check: String = log("", "?", &format!("Installing packages {}", packages.iter()
+            .map(|s| format!("\"{}\"", s))
+            .collect::<Vec<_>>()
+            .join(", "))).unwrap();
+        if continue_check.to_lowercase().contains("n") {
+            log("US012", "E", "User cancelled installation");
+            return Ok(());
+        }
+
+        log("", "I", "Proceeding with installation");
+    }
+
     let handles: Vec<_> = (0..min(THREAD_AMOUNT as usize, download_queue.len())).map(|thread_idx| {
         let dq = Arc::clone(&download_queue);
         let dp = Arc::clone(&downloaded_packages);
@@ -312,12 +339,24 @@ fn install(arguments: &[String]) -> Result<()> {
                     let mut archive = Archive::new(decompressed);
                     archive.unpack(&format!("{}/{}", PACKAGE_PATH, name))?;
 
-                    // Run the install script
-                    if Path::new(&format!("{}/{}/run.sh", PACKAGE_PATH, name)).exists() {
+                    // Run the install script after checking that both it and an uninstall script
+                    // exist
+                    if Path::new(&format!("{}/{}/uwupm-install.sh", PACKAGE_PATH, name)).exists() && 
+                    Path::new(&format!("{}/{}/uwupm-uninstall.sh", PACKAGE_PATH, name)).exists() {
+                        log("", "I", &format!("Running install script for \"{}\"", name));
                         command(&format!("sudo bash {}/{}/uwupm-install.sh", PACKAGE_PATH, name));
+
+                        log("", "I", &format!("Saving uninstall script for \"{}\"", name));
+                        fs::rename("uwupm-uninstall.sh", &format!("{}/{}-uninstall.sh", UNINSTALL_SCRIPTS_PATH, name))?;
+
+                        // Check if the uninstall script path exists and create if it doesn't
+                        if !Path::new(UNINSTALL_SCRIPTS_PATH).exists() {
+                            fs::create_dir_all(UNINSTALL_SCRIPTS_PATH)?;
+                        }
+
                     }
                     else {
-                        log("FS011", "W", &format!("Package \"{}\" doesn't have an uwupm-install.sh file and cannot be installed. Manual intervention is required. The package is installed at \"{}/{}\"", name, PACKAGE_PATH, name));
+                        log("FS011", "W", &format!("Package \"{}\" doesn't have either an uwupm-install.sh or uwupm-uninstall.sh file and cannot be installed. Manual intervention is required. The package is installed at \"{}/{}\"", name, PACKAGE_PATH, name));
                     }
                 }
             }

@@ -27,6 +27,7 @@ Currently UwUPM just supports updating and adding and removing server IPs. But t
 #### (SHxxx) = Shell / Bash error
 #### (FSxxx) = Filesystem error
 #### (DWxxx) = Downloading error
+#### (USxxx) = User-inflicted error
 
 ### Actual error codes:
 
@@ -41,6 +42,7 @@ Currently UwUPM just supports updating and adding and removing server IPs. But t
 - **(IP009)** - Unable to find a queued package on any servers
 - **(DW010)** - A Thread was unable to download a certain package
 - **(FS011)** - There's a missing uwupm-install.sh file in a package that's getting installed
+- **(US012)** - You canceled something
 
 
 ### *Warnings* and *Errors*:
