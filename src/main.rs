@@ -72,11 +72,11 @@ fn download(ip: &str, package: &str, save_name: &str, download_name: &str) -> io
     let bar_width = 40;
     let info_width = 30; // Estimated width of "bytes/total_bytes (eta)"
     let prefix_width = term_width.saturating_sub(bar_width + info_width);
-    let padded_package = format!("{:>width$}", download_name, width = prefix_width - 4); // 4-char spacing
+    let padded_package = format!("{:>width$}", download_name, width = prefix_width - (4 + 2)); // 4-char spacing and logging label
     let full_style = format!("{}    ", padded_package);
 
     pb.set_style(
-        ProgressStyle::with_template(&format!("{full_style}[{{bar:{bar_width}.magenta}}] {{bytes}}/{{total_bytes}} ({{eta}})"))
+        ProgressStyle::with_template(&format!("\x1b[32;1mU:\x1b[0m{full_style}[{{bar:{bar_width}.magenta}}] {{bytes}}/{{total_bytes}} ({{eta}})"))
         .unwrap()
         .progress_chars(PROGRESS_BAR_CHARS),
     );
@@ -121,7 +121,7 @@ fn log(error_code: &str, logging_type: &str, message: &str) -> bool {
         let mut input = String::new();
         io::stdin().read_line(&mut input).unwrap();
     
-        return input.trim().to_string().to_lowercase().contains("n");
+        return !input.trim().to_string().to_lowercase().contains("n");
     }
     else {
         // Whoops, almost forgot about that one
