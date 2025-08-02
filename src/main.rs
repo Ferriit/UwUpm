@@ -100,7 +100,7 @@ fn download(ip: &str, package: &str, save_name: &str, download_name: &str) -> io
 }
 
 
-fn log(error_code: &str, logging_type: &str, message: &str) -> Option<String> {
+fn log(error_code: &str, logging_type: &str, message: &str) -> bool {
     if logging_type == "W" || logging_type == "E" {
         // Logging for warnings and errors
         // 1 for bold, 31 for red and 38;5;208 for orange
@@ -111,7 +111,7 @@ fn log(error_code: &str, logging_type: &str, message: &str) -> Option<String> {
         };
 
         println!("{}{}\x1b[22m({}):\x1b[0m {} :3", ansi_escape_code, logging_type, error_code, message);
-        return None;
+        return false;
     }
     else if logging_type == "?" {
         // Inputs
@@ -121,12 +121,12 @@ fn log(error_code: &str, logging_type: &str, message: &str) -> Option<String> {
         let mut input = String::new();
         io::stdin().read_line(&mut input).unwrap();
     
-        Some(input.trim().to_string())
+        return input.trim().to_string().to_lowercase().contains("n");
     }
     else {
         // Whoops, almost forgot about that one
         println!("\x1b[1;34mI:\x1b[0m {} :3", message);
-        return None;
+        return false;
     }
 }
 
@@ -142,7 +142,12 @@ fn add_server(ip: String, force_flag: bool) -> Result<()> {
 
 
     // Checking to make sure the ip isn't already in the list, is available and contains either http:// or https://
-    if !found && (force_flag || ping_status == 0) && (ip.contains("http://") || ip.contains("https://")) {
+    if !found && (force_flag || ping_status == 0) && (ip.contains("http://") || ip.contains("https://")) {    
+        // Ask the user if they find the server trustworth 
+        if log("", "?", &format!("Are you sure you trust the server \"{}\"", ip)) {
+            log("US012", "E", "Operation cancelled by user");
+            return Ok(());
+        }
         ip_list += &format!("\n{}", ip);
         fs::write(IPLIST_PATH, ip_list)?;
         log("", "I", "Wrote IP to IP list");
@@ -214,6 +219,12 @@ fn update() -> Result<()>{
         .create(true)
         .open(format!("{}/packagelist.txt", SAVE_PATH))?;
 
+    // Security check
+    if !log("", "?", "Are you sure you trust all servers in the server list and want to update the package list?") {
+        log("US012", "E", "Update cancelled by user");
+        return Ok(());
+    }
+
     for i in ip_list{
         log("", "I", &format!("Adding packagelist from {}...", i));
         download(i, "packagelist.txt", "packagelist_partial.txt", &format!("{}:packagelist.txt", i))?;
@@ -238,6 +249,7 @@ fn install(arguments: &[String]) -> Result<()> {
 
     /* Flags:
      * -s/--skip = Skip unavailable packages
+     * -y/--no-confirm = Install without confirming
      * */
     // Separate Flags from Packages
     for i in arguments {
@@ -304,11 +316,11 @@ fn install(arguments: &[String]) -> Result<()> {
     }
 
     if !no_confirm {
-        let continue_check: String = log("", "?", &format!("Installing packages {}", packages.iter()
+        let continue_check: bool = log("", "?", &format!("Installing packages {}", packages.iter()
             .map(|s| format!("\"{}\"", s))
             .collect::<Vec<_>>()
-            .join(", "))).unwrap();
-        if continue_check.to_lowercase().contains("n") {
+            .join(", ")));
+        if continue_check {
             log("US012", "E", "User cancelled installation");
             return Ok(());
         }
