@@ -43,6 +43,8 @@ Currently UwUPM just supports updating and adding and removing server IPs. But t
 - **(DW010)** - A Thread was unable to download a certain package
 - **(FS011)** - There's a missing uwupm-install.sh file in a package that's getting installed
 - **(US012)** - You canceled something
+- **(FS013)** - A disk was either mounted or unmounted when it had to be the opposite one
+- **(SH014)** - A command ran by UwUPM failed
 
 
 ### *Warnings* and *Errors*:

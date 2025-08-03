@@ -1,6 +1,6 @@
 use std::ffi::CString;
 use std::env;
-use std::io::{Result, Write, Read, BufReader, self};
+use std::io::{Result, Write, Read, BufReader, self, BufRead};
 use std::fs::{File, self};
 use std::path::Path;
 use reqwest::blocking::get;
@@ -13,12 +13,12 @@ use flate2::read::GzDecoder;
 use tar::Archive;
 
 
-
 const IPLIST_PATH: &str = "/etc/uwupm/iplist.txt";
 const PACKAGE_LIST_PATH: &str = "/etc/uwupm/packagelist.txt";
 const SAVE_PATH: &str = "/etc/uwupm/packages_partial";
 const PACKAGE_PATH: &str = "/etc/uwupm/packages";
 const UNINSTALL_SCRIPTS_PATH: &str = "/etc/uwupm/uninstall_scripts";
+const MOUNT_POINT_PATH: &str = "/etc/uwupm/mountpoint";
 const PROGRESS_BAR_CHARS: &str = "##-";//"██-";
 const THREAD_AMOUNT: i8 = 5;
 
@@ -128,6 +128,22 @@ fn log(error_code: &str, logging_type: &str, message: &str) -> bool {
         println!("\x1b[1;34mI:\x1b[0m {} :3", message);
         return false;
     }
+}
+
+
+fn is_mounted(mount_point: &str) -> std::io::Result<bool> {
+    let file = File::open("/proc/mounts")?;
+    let reader = BufReader::new(file);
+
+    for line in reader.lines() {
+        let line = line?;
+        let fields: Vec<&str> = line.split_whitespace().collect();
+        if fields.len() >= 2 && fields[1] == mount_point {
+            return Ok(true);
+        }
+    }
+
+    Ok(false)
 }
 
 
@@ -261,8 +277,11 @@ fn install(arguments: &[String]) -> Result<()> {
     }
 
     //TODO: Implement more flags
-    let skip_unavailable = flags.contains(&"-s") || flags.contains(&"--skip");
+    let skip_unavailable: bool = flags.contains(&"-s") || flags.contains(&"--skip");
     let no_confirm: bool = flags.contains(&"-y") || flags.contains(&"--no-confirm");
+
+
+    // TODO: Implement install from disk
 
     log("", "I", "Reading package list...");
     let package_list_raw = fs::read_to_string(PACKAGE_LIST_PATH)?;
@@ -403,6 +422,35 @@ fn install(arguments: &[String]) -> Result<()> {
     }
 
     log("", "I", "Install complete");
+    Ok(())
+}
+
+
+fn install_from_disk(packages: Vec<&str>, disk: &str, relative_path: &str) -> Result<()> {
+    if is_mounted(disk)? {
+        log("E", "FS013", "Disk is already mounted. Please unmount before proceeding");
+        return Ok(());
+    }
+
+    if !Path::new(MOUNT_POINT_PATH).exists() {
+        log("W", "FS008", &format!("Folder \"{}\" doesn't exist. Creating...", MOUNT_POINT_PATH));
+        fs::create_dir_all(MOUNT_POINT_PATH)?;
+    }
+
+    log("", "I", &format!("Mounting drive {}", disk));
+    let mount_result = command(&format!("sudo mount {} {}", disk, MOUNT_POINT_PATH));
+    if mount_result != 0 {
+        log("E", "FS", &format!("Failed to mount drive. Exit code: {}", mount_result));
+        return Ok(());
+    }
+
+    let disk_contents: Vec<String> = fs::read_dir(&format!("{}/{}", MOUNT_POINT_PATH, relative_path))?
+        .filter_map(|entry| entry.ok())            // Skip errors
+        .map(|entry| entry.path().display().to_string())  // Convert PathBuf to String
+        .collect();
+
+    println!("{:?}", disk_contents);
+
     Ok(())
 }
 
