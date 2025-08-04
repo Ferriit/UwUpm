@@ -280,9 +280,6 @@ fn install(arguments: &[String]) -> Result<()> {
     let skip_unavailable: bool = flags.contains(&"-s") || flags.contains(&"--skip");
     let no_confirm: bool = flags.contains(&"-y") || flags.contains(&"--no-confirm");
 
-
-    // TODO: Implement install from disk
-
     log("", "I", "Reading package list...");
     let package_list_raw = fs::read_to_string(PACKAGE_LIST_PATH)?;
 
@@ -531,13 +528,21 @@ fn main() -> Result<()> {
                 Ok(())
             }
             "install" => {
-                if args.len() > 2{
+                if args.len() > 2 {
                     install(&args[2..])
                 } else {
                     log("SH005", "E", "Invalid usage. Expected: uwupm install [packages/flags]");
                     Ok(())
                 }
             },
+            "diskinstall" => {
+                if args.len() > 2 {
+                    install_from_disk(args[3..].iter().map(|s| s.as_str()).collect(), &args[2], "")
+                } else {
+                    log("SH005", "E", "Invalid usage. Expected uwupm diskinstall [disk] [packages]");
+                    Ok(())
+                }
+            }
             _ => unknown_command(args[1].clone())
         }?;
     }
