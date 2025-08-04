@@ -479,13 +479,13 @@ fn show_package_list() -> Result<()> {
 
     println!("\x1b[1mPackage List:\x1b[0m\n{}", package_list);
 
-    Ok(())
-}
+        Ok(())
+    }
 
 
-fn main() -> Result<()> {
+    fn main() -> Result<()> {
     let args: Vec<String> = env::args().collect();
-    
+
     if args.len() > 1 {
         match &args[1][..] {
             "addip" => {
