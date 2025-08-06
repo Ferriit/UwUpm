@@ -39,7 +39,7 @@ Currently UwUPM just supports updating and adding and removing server IPs. But t
 - **(FS006)** - Unable to create necessary files in setup
 - **(IP007)** - No available servers to fetch from
 - **(FS008)** - A necessary folder doesn't exist
-- **(IP009)** - Unable to find a queued package on any servers
+- **(IP/FS009)** - Unable to find a queued package on any servers or mounted disks
 - **(DW010)** - A Thread was unable to download a certain package
 - **(FS011)** - There's a missing uwupm-install.sh file in a package that's getting installed
 - **(US012)** - You canceled something

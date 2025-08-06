@@ -446,7 +446,34 @@ fn install_from_disk(packages: Vec<&str>, disk: &str, relative_path: &str) -> Re
         .map(|entry| entry.path().display().to_string())  // Convert PathBuf to String
         .collect();
 
-    println!("{:?}", disk_contents);
+    //println!("{:?}", disk_contents);
+
+    let mut queue = Vec::new();
+    let mut downloadable = true;
+
+    let mut undownloadable = Vec::new();
+
+    log("", "I", "Checking package availability...");
+
+    for p in packages {
+        if Path::new(&format!("{}/{}.tar.gz", MOUNT_POINT_PATH, p)).exists() {
+            queue.push(format!("{}.tar.gz", p));
+        }
+        else {
+            downloadable = false;
+            undownloadable.push(p.to_string())
+        }
+    }
+
+    if !downloadable {
+        log("FS009", "E", &format!("Unable to locate packages \"{:?}\"", undownloadable));
+        return Ok(())
+    }
+
+    // TODO: Add rest of install protocol
+
+    log("", "I", "Unmounting drive");
+    command(&format!("sudo umount {}", disk));
 
     Ok(())
 }

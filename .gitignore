@@ -2,3 +2,4 @@ src/main.o
 target/
 libclib.a
 Cargo.lock
+testdrive.img
