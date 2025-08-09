@@ -455,13 +455,13 @@ fn install_from_disk(packages: Vec<&str>, disk: &str, relative_path: &str) -> Re
 
     log("", "I", "Checking package availability...");
 
-    for p in packages {
-        if Path::new(&format!("{}/{}.tar.gz", MOUNT_POINT_PATH, p)).exists() {
-            queue.push(format!("{}.tar.gz", p));
+    for package in packages.iter() {
+        if Path::new(&format!("{}/{}.tar.gz", MOUNT_POINT_PATH, package)).exists() {
+            queue.push(format!("{}.tar.gz", package));
         }
         else {
             downloadable = false;
-            undownloadable.push(p.to_string())
+            undownloadable.push(package.to_string())
         }
     }
 
@@ -471,6 +471,34 @@ fn install_from_disk(packages: Vec<&str>, disk: &str, relative_path: &str) -> Re
     }
 
     // TODO: Add rest of install protocol
+
+    for package in packages.iter() {
+        // Unpack the archive
+        let tar_gz = File::open(&format!("{}/{}.tar.gz", MOUNT_POINT_PATH, package))?;
+        let decompressed = GzDecoder::new(tar_gz);
+        let mut archive = Archive::new(decompressed);
+        archive.unpack(&format!("{}/{}", PACKAGE_PATH, package))?;
+
+        // Run the install script after checking that both it and an uninstall script
+        // exist
+        if Path::new(&format!("{}/{}/uwupm-install.sh", PACKAGE_PATH, package)).exists() && 
+        Path::new(&format!("{}/{}/uwupm-uninstall.sh", PACKAGE_PATH, package)).exists() {
+            log("", "I", &format!("Running install script for \"{}\"", package));
+            command(&format!("sudo bash {}/{}/uwupm-install.sh", PACKAGE_PATH, package));
+
+            log("", "I", &format!("Saving uninstall script for \"{}\"", package));
+            fs::rename("uwupm-uninstall.sh", &format!("{}/{}-uninstall.sh", UNINSTALL_SCRIPTS_PATH, package))?;
+
+            // Check if the uninstall script path exists and create if it doesn't
+            if !Path::new(UNINSTALL_SCRIPTS_PATH).exists() {
+                fs::create_dir_all(UNINSTALL_SCRIPTS_PATH)?;
+            }
+
+        }
+        else {
+            log("FS011", "W", &format!("Package \"{}\" doesn't have either an uwupm-install.sh or uwupm-uninstall.sh file and cannot be installed. Manual intervention is required. The package is installed at \"{}/{}\"", package, PACKAGE_PATH, package));
+        }
+    }
 
     log("", "I", "Unmounting drive");
     command(&format!("sudo umount {}", disk));
